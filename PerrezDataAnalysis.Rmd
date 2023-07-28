@@ -1,0 +1,1560 @@
+---
+title: "EmoPerrezDataAnalysis"
+author: "Anon until publish"
+output: html_document
+date: "2023-04-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(ggplot2)
+library(brms) ##Doesn't work with r4.2 -> need to use r4.1.3
+library(cowplot)
+library(reshape2)
+
+```
+
+```{r echo=FALSE, warning=FALSE, include=FALSE}
+setwd("C:/Users/nutju/Downloads/EMO")
+## Data loading
+### Paramters: Model, batch/indi, Temp, n, instruction, instruct_bef, hist.
+### Can't ignore temp and n since we didn't manipulate them
+### Hist only include before = true and individual
+### Instruction = 2 (and before = true) is only in individual 
+### 10 each model => 30 total
+
+
+models <- c("text-davinci-003", "gpt-3.5-turbo-0301", "gpt-4-0314")
+batch <- c("individual","batch")
+Temp <- "Temp_=0_n=0" ##Didn't manipulate these two 
+instruction = c("0","1","2")
+instruction_bef = c("False","True")
+hist = c("False","True")
+
+ 
+### Text-davnici-003 = d003
+
+#### Batch
+d003_batch_i0_ibF_hF <- read_csv("Results_text-davinci-003_batch_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv", show_col_types = FALSE)
+d003_batch_i0_ibT_hF <- read_csv("Results_text-davinci-003_batch_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+d003_batch_i1_ibF_hF <- read_csv("Results_text-davinci-003_batch_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv", show_col_types = FALSE)
+d003_batch_i1_ibT_hF <- read_csv("Results_text-davinci-003_batch_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+
+#### Inidividual 
+d003_indiv_i0_ibF_hF <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv", show_col_types = FALSE)
+d003_indiv_i0_ibT_hF <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+d003_indiv_i1_ibF_hF <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv", show_col_types = FALSE)
+d003_indiv_i1_ibT_hF <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+
+#### The two special conditions
+d003_indiv_i0_ibT_hT <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=True.csv", show_col_types = FALSE)
+d003_indiv_i2_ibT_hF <- read_csv("Results_text-davinci-003_individual_Temp=0_n=0_instruction=2_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+
+
+### gpt3.5-turbo/chatGPT
+
+#### Batch
+chat_batch_i0_ibF_hF <- read_csv("Results_gpt-3.5-turbo-0301_batch_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+chat_batch_i0_ibT_hF <- read_csv("Results_gpt-3.5-turbo-0301_batch_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv", show_col_types = FALSE)
+chat_batch_i1_ibF_hF <- read_csv("Results_gpt-3.5-turbo-0301_batch_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+chat_batch_i1_ibT_hF <- read_csv("Results_gpt-3.5-turbo-0301_batch_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+#### Inidividual 
+chat_indiv_i0_ibF_hF <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+chat_indiv_i0_ibT_hF <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+chat_indiv_i1_ibF_hF <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+chat_indiv_i1_ibT_hF <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+#### The two special conditions
+chat_indiv_i0_ibT_hT <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=True.csv",show_col_types = FALSE)
+chat_indiv_i2_ibT_hF <- read_csv("Results_gpt-3.5-turbo-0301_individual_Temp=0_n=0_instruction=2_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+
+### gpt-4
+
+#### Batch
+gpt4_batch_i0_ibF_hF <- read_csv("Results_gpt-4-0314_batch_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+gpt4_batch_i0_ibT_hF <- read_csv("Results_gpt-4-0314_batch_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+gpt4_batch_i1_ibF_hF <- read_csv("Results_gpt-4-0314_batch_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+gpt4_batch_i1_ibT_hF <- read_csv("Results_gpt-4-0314_batch_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+#### Inidividual 
+gpt4_indiv_i0_ibF_hF <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=0_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+gpt4_indiv_i0_ibT_hF <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+gpt4_indiv_i1_ibF_hF <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=1_instruct_bef=False_hist=False.csv",show_col_types = FALSE)
+gpt4_indiv_i1_ibT_hF <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=1_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+#### The two special conditions
+gpt4_indiv_i0_ibT_hT <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=0_instruct_bef=True_hist=True.csv",show_col_types = FALSE)
+gpt4_indiv_i2_ibT_hF <- read_csv("Results_gpt-4-0314_individual_Temp=0_n=0_instruction=2_instruct_bef=True_hist=False.csv",show_col_types = FALSE)
+
+## Note on NA
+## > sum(is.na(chat_batch_i0_ibF_hF))
+## [1] 3
+##> sum(is.na(chat_batch_i0_ibT_hF))
+## [1] 1
+##> sum(is.na(chat_batch_i1_ibF_hF))
+## [1] 2
+##> sum(is.na(chat_batch_i1_ibT_hF))
+## [1] 16
+
+```
+
+
+```{r echo=FALSE}
+## Combine all of these into one giant dataset 
+### Could have looped this.
+story_n <- 18
+short_name <- c("d003_batch_i0_ibF_hF", "d003_batch_i0_ibT_hF", "d003_batch_i1_ibF_hF", "d003_batch_i1_ibT_hF",
+             "d003_indiv_i0_ibF_hF", "d003_indiv_i0_ibT_hF", "d003_indiv_i1_ibF_hF", "d003_indiv_i1_ibT_hF",
+             "d003_indiv_i2_ibT_hF", "d003_indiv_i0_ibT_hT",
+             "chat_batch_i0_ibF_hF", "chat_batch_i0_ibT_hF", "chat_batch_i1_ibF_hF", "chat_batch_i1_ibT_hF",
+             "chat_indiv_i0_ibF_hF", "chat_indiv_i0_ibT_hF", "chat_indiv_i1_ibF_hF", "chat_indiv_i1_ibT_hF",
+             "chat_indiv_i0_ibT_hT", "chat_indiv_i2_ibT_hF",
+             "gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+             "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF",
+             "gpt4_indiv_i0_ibT_hT", "gpt4_indiv_i2_ibT_hF")
+
+dat <- rbind(d003_batch_i0_ibF_hF, d003_batch_i0_ibT_hF, d003_batch_i1_ibF_hF, d003_batch_i1_ibT_hF,
+             d003_indiv_i0_ibF_hF, d003_indiv_i0_ibT_hF, d003_indiv_i1_ibF_hF, d003_indiv_i1_ibT_hF,
+             d003_indiv_i2_ibT_hF, d003_indiv_i0_ibT_hT,
+             chat_batch_i0_ibF_hF, chat_batch_i0_ibT_hF, chat_batch_i1_ibF_hF, chat_batch_i1_ibT_hF,
+             chat_indiv_i0_ibF_hF, chat_indiv_i0_ibT_hF, chat_indiv_i1_ibF_hF, chat_indiv_i1_ibT_hF,
+             chat_indiv_i0_ibT_hT, chat_indiv_i2_ibT_hF,
+             gpt4_batch_i0_ibF_hF, gpt4_batch_i0_ibT_hF, gpt4_batch_i1_ibF_hF, gpt4_batch_i1_ibT_hF,
+             gpt4_indiv_i0_ibF_hF, gpt4_indiv_i0_ibT_hF, gpt4_indiv_i1_ibF_hF, gpt4_indiv_i1_ibT_hF,
+             gpt4_indiv_i0_ibT_hT, gpt4_indiv_i2_ibT_hF)
+
+dat$model <- rep(c("d003","chat","gpt4"), each = 10*story_n)
+dat$batch <- rep(c(rep("Batch", 4), rep("Individual",6)), 3*story_n)
+dat$instruction <- rep(c(0,0,1,1,0,0,1,1,0,2),3*story_n)
+dat$instruction_before <- rep(c("After","Before","After","Before",
+                                "After","Before","After","Before",
+                                "Before","Before"),3*story_n)
+dat$history <- rep(c(rep("False",9),"True"),3*story_n) 
+dat$group <- rep(c(1:30), each=story_n)
+
+colnames(dat)[1] <- "story"
+dat$story <- dat$story + 1 #Shift the index by one
+
+aversive_stories <- c(1,3,6,8,9,10,12,14,16)
+lossfailure_stories <- c(2,4,5,7,8,11,13,17,18)
+
+dat$type <- ifelse(dat$story %in% aversive_stories, "Aversive", "LossFailure")
+
+pos_outcome <- c(1,3,4,5,8,11,14,17,18)
+neg_outcome <- c(2,6,7,9,10,12,13,15,16)
+
+dat$outcome <- ifelse(dat$story %in% pos_outcome, "positive","negative")
+dat$short_name <- rep(short_name, each =story_n)
+
+colnames(dat)[48] <- "act_suppressed_info_3"
+colnames(dat)[49] <- "act_search_info_3"
+
+instruction_names <- c("Choice","Num Only","Depression")
+model_short_names <- c("Human","D003","Chat","GPT4")
+n_model <- length(short_name)
+
+```
+
+
+```{r echo=FALSE}
+
+## Generate Mean, SD dataset and then add human data from Perrez 1992 chapter 3 
+### Calculate Mean and SD for the two types of story 
+###  -> Summary Stats: Mean, Median, SD, SE (SD/sqrt(n=9))
+dat_sum <- data.frame()
+for(g in c(1:n_model)){
+  dat_out <- list()
+  for(q in colnames(dat)[2:51]){
+    dat_temp <- data.frame(
+      mean = c(mean(dat[[q]][dat$group == g & dat$type=="Aversive"], na.rm=TRUE), 
+               mean(dat[[q]][dat$group == g & dat$type=="LossFailure"], na.rm=TRUE)),
+      sd = c(sd(dat[[q]][dat$group == g & dat$type=="Aversive"], na.rm=TRUE), 
+             sd(dat[[q]][dat$group == g & dat$type=="LossFailure"], na.rm=TRUE))
+    )
+    colnames(dat_temp) <- c(paste0(q,"_mean"),paste0(q,"_sd"))
+    dat_temp[[paste0(q,"_se")]] <- dat_temp[[paste0(q,"_sd")]]/sqrt(c(sum(!is.na(dat[[q]][dat$group == g & dat$type=="Aversive"])),
+                                                                 sum(!is.na(dat[[q]][dat$group == g & dat$type=="LossFailure"])))) ##Dealing with NA
+    dat_out <- append(dat_out, dat_temp)
+  }
+  dat_sum <- rbind(dat_sum, data.frame(dat_out))
+} 
+type_n <- 2
+dat_sum$group <- rep(c(1:n_model), each = type_n)
+dat_sum$type  <- rep(c("Aversive","LossFailure"), n_model)
+dat_sum$model <- rep(c("d003","chat","gpt4"), each = 10*type_n)
+dat_sum$batch <- rep(c(rep("Batch", 8), rep("Individual",12)), 3)
+dat_sum$instruction <- rep(rep(c(0,0,1,1,0,0,1,1,0,2), each = type_n), 3)
+dat_sum$instruction_before <- rep(rep(c("After","Before","After","Before",
+                                "After","Before","After","Before",
+                                "Before","Before"), each =type_n),3)
+dat_sum$history <- rep(c(rep("False",9*2),"True","True"), 3) 
+
+dat_sum$short_name <- rep(short_name,each = type_n)
+
+## Adding Human Data (Only some are available from Perrez Chapter 3)
+dat_sum[nrow(dat_sum)+2, ] <- NA
+ind <- nrow(dat_sum)
+dat_sum$short_name[ind] <- "Human"
+dat_sum$type[ind]       <- "LossFailure"
+dat_sum$controlability_1_mean[ind] <- 2.57
+dat_sum$controlability_1_sd[ind]   <- 0.68
+dat_sum$controlability_2_mean[ind] <- 2.08
+dat_sum$controlability_2_sd[ind]   <- 0.71
+
+dat_sum$changeability_1_mean[ind]  <- 1.41
+dat_sum$changeability_1_sd[ind]    <- 0.48
+dat_sum$changeability_2_mean[ind]  <- 1.12
+dat_sum$changeability_2_sd[ind]    <- 0.56
+
+dat_sum$valence_1_mean[ind] <- 2.75
+dat_sum$valence_1_sd[ind]   <- 0.53
+dat_sum$valence_2_mean[ind] <- 2.67
+dat_sum$valence_2_sd[ind]   <- 0.54
+
+
+dat_sum$nervous_calm_1_mean[ind]  <- 1.96
+dat_sum$nervous_calm_1_sd[ind]    <- 0.55
+dat_sum$nervous_calm_2_mean[ind]  <- 2.05
+dat_sum$nervous_calm_2_sd[ind]    <- 0.60
+
+dat_sum$depressed_cheerful_1_mean[ind] <- 1.87 
+dat_sum$depressed_cheerful_1_sd[ind]   <- 0.55
+dat_sum$depressed_cheerful_2_mean[ind] <- 1.84
+dat_sum$depressed_cheerful_2_sd[ind] <- 0.61
+  
+dat_sum$angry_gentle_1_mean[ind]  <- 2.28
+dat_sum$angry_gentle_1_sd[ind]    <- 0.59
+dat_sum$angry_gentle_2_mean[ind]  <- 2.21
+dat_sum$angry_gentle_2_sd[ind]    <- 0.63
+
+dat_sum$allo_problem_1_mean[ind]  <- 2.25
+dat_sum$allo_problem_1_sd[ind]    <- 0.32
+dat_sum$allo_problem_2_mean[ind]  <- 1.72
+dat_sum$allo_problem_2_sd[ind]    <- 0.34
+  
+dat_sum$emotion_focused_ef_1_mean[ind] <- 1.96
+dat_sum$emotion_focused_ef_1_sd[ind]   <- 0.59
+dat_sum$emotion_focused_ef_2_mean[ind] <- 2.07
+dat_sum$emotion_focused_ef_2_sd[ind]   <- 0.57
+  
+dat_sum$self_esteem_ef_1_mean[ind] <- 1.95
+dat_sum$self_esteem_ef_1_sd[ind]   <- 0.59
+dat_sum$self_esteem_ef_2_mean[ind] <- 2.08
+dat_sum$self_esteem_ef_2_sd[ind]   <- 0.56
+
+dat_sum$env_active_1_mean[ind]   <- 2.46
+dat_sum$env_active_1_sd[ind]     <- 0.62
+dat_sum$env_active_2_mean[ind]   <- 2.16
+dat_sum$env_active_2_sd[ind]     <- 0.66
+
+dat_sum$env_passive_1_mean[ind]  <- 1.40
+dat_sum$env_passive_1_sd[ind]    <- 0.51
+dat_sum$env_passive_2_mean[ind]  <- 1.49
+dat_sum$env_passive_2_sd[ind]    <- 0.51
+ 
+dat_sum$act_search_info_1_mean[ind]  <- 3.13
+dat_sum$act_search_info_1_sd[ind]    <- 0.51
+dat_sum$act_search_info_2_mean[ind]  <- 3.07
+dat_sum$act_search_info_2_sd[ind]    <- 0.50
+   
+dat_sum$act_suppressed_info_1_mean[ind] <- 1.05
+dat_sum$act_suppressed_info_1_sd[ind]   <- 0.52
+dat_sum$act_suppressed_info_2_mean[ind] <- 1.26
+dat_sum$act_suppressed_info_2_sd[ind]   <- 0.57
+
+dat_sum$act_reevaluation_1_mean[ind]  <- 2.14
+dat_sum$act_reevaluation_1_sd[ind]    <- 0.57
+dat_sum$act_reevaluation_2_mean[ind]  <- 2.23
+dat_sum$act_reevaluation_2_sd[ind]    <- 0.55
+
+dat_sum$act_palliation_1_mean[ind]   <- 1.85
+dat_sum$act_palliation_1_sd[ind]     <- 0.75
+dat_sum$act_palliation_2_mean[ind]   <- 1.95
+dat_sum$act_palliation_2_sd[ind]     <- 0.76
+
+dat_sum$act_blame_self_1_mean[ind]   <- 1.50
+dat_sum$act_blame_self_1_sd[ind]     <- 0.41
+dat_sum$act_blame_self_2_mean[ind]   <- 1.57
+dat_sum$act_blame_self_2_sd[ind]     <- 0.53
+
+dat_sum$act_blame_other_1_mean[ind]  <- 1.88
+dat_sum$act_blame_other_1_sd[ind]    <- 0.51
+dat_sum$act_blame_other_2_mean[ind]  <- 2.10
+dat_sum$act_blame_other_2_sd[ind]    <- 0.53
+
+ind <- nrow(dat_sum)-1
+dat_sum$short_name[ind]  <- "Human"
+dat_sum$type[ind]        <- "Aversive"
+dat_sum$controlability_1_mean[ind] <- 3.15
+dat_sum$controlability_1_sd[ind]   <- 0.57
+dat_sum$controlability_2_mean[ind] <- 2.73
+dat_sum$controlability_2_sd[ind]   <- 0.64
+
+dat_sum$changeability_1_mean[ind]  <- 1.76
+dat_sum$changeability_1_sd[ind]    <- 0.59
+dat_sum$changeability_2_mean[ind]  <- 1.51
+dat_sum$changeability_2_sd[ind]    <- 0.62
+
+dat_sum$valence_1_mean[ind] <- 2.57
+dat_sum$valence_1_sd[ind]   <- 0.62
+dat_sum$valence_2_mean[ind] <- 2.73
+dat_sum$valence_2_sd[ind]   <- 0.66
+
+dat_sum$nervous_calm_1_mean[ind]  <- 1.97
+dat_sum$nervous_calm_1_sd[ind]    <- 0.63
+dat_sum$nervous_calm_2_mean[ind]  <- 1.97
+dat_sum$nervous_calm_2_sd[ind]    <- 0.72
+
+dat_sum$depressed_cheerful_1_mean[ind] <- 2.11
+dat_sum$depressed_cheerful_1_sd[ind]   <- 0.57
+dat_sum$depressed_cheerful_2_mean[ind] <- 1.99
+dat_sum$depressed_cheerful_2_sd[ind] <- 0.61
+  
+dat_sum$angry_gentle_1_mean[ind]  <- 2.19
+dat_sum$angry_gentle_1_sd[ind]    <- 0.66
+dat_sum$angry_gentle_2_mean[ind]  <- 1.95
+dat_sum$angry_gentle_2_sd[ind]    <- 0.74
+
+
+dat_sum$allo_problem_1_mean[ind]  <- 2.17
+dat_sum$allo_problem_1_sd[ind]    <- 0.35
+dat_sum$allo_problem_2_mean[ind]  <- 2.12
+dat_sum$allo_problem_2_sd[ind]    <- 0.42
+  
+dat_sum$emotion_focused_ef_1_mean[ind] <- 2.13
+dat_sum$emotion_focused_ef_1_sd[ind]   <- 0.49
+dat_sum$emotion_focused_ef_2_mean[ind] <- 2.09
+dat_sum$emotion_focused_ef_2_sd[ind]   <- 0.53
+  
+dat_sum$self_esteem_ef_1_mean[ind] <- 2.21
+dat_sum$self_esteem_ef_1_sd[ind]   <- 0.51
+dat_sum$self_esteem_ef_2_mean[ind] <- 2.21
+dat_sum$self_esteem_ef_2_sd[ind]   <- 0.51
+  
+dat_sum$env_active_1_mean[ind]   <- 2.93
+dat_sum$env_active_1_sd[ind]     <- 0.53
+dat_sum$env_active_2_mean[ind]   <- 2.72
+dat_sum$env_active_2_sd[ind]     <- 0.59
+
+dat_sum$env_passive_1_mean[ind]  <- 1.42
+dat_sum$env_passive_1_sd[ind]    <- 0.52
+dat_sum$env_passive_2_mean[ind]  <- 1.50
+dat_sum$env_passive_2_sd[ind]    <- 0.53
+ 
+dat_sum$act_search_info_1_mean[ind]  <- 3.17
+dat_sum$act_search_info_1_sd[ind]    <- 0.51
+dat_sum$act_search_info_2_mean[ind]  <- 3.14
+dat_sum$act_search_info_2_sd[ind]    <- 0.51
+   
+dat_sum$act_suppressed_info_1_mean[ind] <- 1.03
+dat_sum$act_suppressed_info_1_sd[ind]   <- 0.49
+dat_sum$act_suppressed_info_2_mean[ind] <- 1.14
+dat_sum$act_suppressed_info_2_sd[ind]   <- 0.53
+
+dat_sum$act_reevaluation_1_mean[ind]  <- 2.24
+dat_sum$act_reevaluation_1_sd[ind]    <- 0.59
+dat_sum$act_reevaluation_2_mean[ind]  <- 2.19
+dat_sum$act_reevaluation_2_sd[ind]    <- 0.64
+
+dat_sum$act_palliation_1_mean[ind]   <- 1.90
+dat_sum$act_palliation_1_sd[ind]     <- 0.70
+dat_sum$act_palliation_2_mean[ind]   <- 1.93
+dat_sum$act_palliation_2_sd[ind]     <- 0.77
+
+dat_sum$act_blame_self_1_mean[ind]   <- 1.71
+dat_sum$act_blame_self_1_sd[ind]     <- 0.51
+dat_sum$act_blame_self_2_mean[ind]   <- 1.57
+dat_sum$act_blame_self_2_sd[ind]     <- 0.54
+
+dat_sum$act_blame_other_1_mean[ind]  <- 1.99
+dat_sum$act_blame_other_1_sd[ind]    <- 0.60
+dat_sum$act_blame_other_2_mean[ind]  <- 2.32
+dat_sum$act_blame_other_2_sd[ind]    <- 0.64
+  
+  
+hypo_questions2 <- c("controlability","changeability","valence","nervous_calm","depressed_cheerful","angry_gentle","allo_problem","emotion_focused_ef","self_esteem_ef","env_active","env_passive","act_search_info","act_suppressed_info","act_reevaluation","act_palliation","act_blame_self", "act_blame_other")
+
+##Cal se
+perrez_n <- 100 ##According to perrez chapter 3
+for(q in hypo_questions2){
+  human_id <- dat_sum$short_name=="Human"
+  dat_sum[[paste0(q,"_1_se")]][human_id] <- dat_sum[[paste0(q,"_1_sd")]][human_id]/sqrt(perrez_n)
+  dat_sum[[paste0(q,"_2_se")]][human_id] <- dat_sum[[paste0(q,"_2_sd")]][human_id]/sqrt(perrez_n)
+}
+
+```
+
+
+```{r echo=FALSE}
+## Too late (maybe) but rather than creating the new dataset, I could have create new columns to the old dat_sum...
+
+dat_sum3 <- data.frame()
+
+for(g in c(1:n_model)){
+  dat_out <- list()
+  for(q in colnames(dat)[41:51]){
+    dat_temp <- data.frame(
+      mean = c(mean(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "positive"], na.rm=TRUE),
+               mean(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "negative"], na.rm=TRUE),
+               mean(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "positive"], na.rm=TRUE),
+               mean(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "negative"], na.rm=TRUE)),
+      sd = c(sd(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "positive"], na.rm=TRUE),
+             sd(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "negative"], na.rm=TRUE),
+             sd(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "positive"], na.rm=TRUE),
+             sd(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "negative"], na.rm=TRUE))
+    )
+    colnames(dat_temp) <- c(paste0(q,"_mean"),paste0(q,"_sd"))
+    n <- c( sum(!is.na(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "positive"])),
+            sum(!is.na(dat[[q]][dat$group == g & dat$type=="Aversive" & dat$outcome == "negative"])),
+            sum(!is.na(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "positive"])),
+            sum(!is.na(dat[[q]][dat$group == g & dat$type=="LossFailure" & dat$outcome == "negative"])))
+    dat_temp[[paste0(q,"_se")]] <- dat_temp[[paste0(q,"_sd")]]/sqrt(n) 
+    dat_out <- append(dat_out, dat_temp)
+  }
+  dat_sum3 <- rbind(dat_sum3, data.frame(dat_out))
+} 
+
+type_n <- 4
+dat_sum3$group <- rep(c(1:n_model), each = type_n)
+dat_sum3$type  <- rep(rep(c("Aversive","LossFailure"),each=2), n_model)
+dat_sum3$outcome <- rep(c("positive","negative"), n_model*2)
+dat_sum3$model <- rep(c("d003","chat","gpt4"), each = 10*type_n)
+dat_sum3$batch <- rep(c(rep("Batch", 8*2), rep("Individual",12*2)), 3)
+dat_sum3$instruction <- rep(rep(c(0,0,1,1,0,0,1,1,0,2), each = type_n), 3)
+dat_sum3$instruction_before <- rep(rep(c("After","Before","After","Before",
+                                "After","Before","After","Before",
+                                "Before","Before"), each =type_n),3)
+dat_sum3$history <- rep(c(rep("False",9*2),"True","True"), 3) 
+dat_sum3$short_name <- rep(short_name,each = type_n)
+
+dat_sum3[nrow(dat_sum3)+4, ] <- NA
+ind <- nrow(dat_sum3) 
+dat_sum3$short_name[ind] <- "Human"
+dat_sum3$type[ind]       <- "LossFailure"
+dat_sum3$outcome[ind]       <- "negative"
+
+dat_sum3$valence_3_mean[ind] <- 2.99
+dat_sum3$valence_3_sd[ind]   <- 0.69
+
+dat_sum3$nervous_calm_3_mean[ind] <- 1.86 
+dat_sum3$nervous_calm_3_sd[ind]   <- 0.62
+
+dat_sum3$depressed_cheerful_3_mean[ind]  <- 1.57
+dat_sum3$depressed_cheerful_3_sd[ind]    <- 0.72
+    
+dat_sum3$angry_gentle_3_mean[ind] <- 2.00
+dat_sum3$angry_gentle_3_sd[ind]   <- 0.77
+
+  
+ind <- nrow(dat_sum3) - 1
+dat_sum3$short_name[ind] <- "Human"
+dat_sum3$type[ind]       <- "LossFailure"
+dat_sum3$outcome[ind]       <- "positive"
+
+dat_sum3$valence_3_mean[ind] <- 0.90
+dat_sum3$valence_3_sd[ind]   <- 0.56
+
+dat_sum3$nervous_calm_3_mean[ind] <- 3.91
+dat_sum3$nervous_calm_3_sd[ind]   <- 0.65
+
+dat_sum3$depressed_cheerful_3_mean[ind]  <- 3.75
+dat_sum3$depressed_cheerful_3_sd[ind]    <- 0.73
+   
+dat_sum3$angry_gentle_3_mean[ind] <- 3.87
+dat_sum3$angry_gentle_3_sd[ind]   <- 0.73
+
+  
+ind <- nrow(dat_sum3) - 2
+dat_sum3$short_name[ind] <- "Human"
+dat_sum3$type[ind]       <- "LossFailure"
+dat_sum3$outcome[ind]    <- "negative"
+
+dat_sum3$valence_3_mean[ind] <- 2.70
+dat_sum3$valence_3_sd[ind]   <- 0.69
+
+dat_sum3$nervous_calm_3_mean[ind] <- 1.94
+dat_sum3$nervous_calm_3_sd[ind]   <- 0.77
+
+dat_sum3$depressed_cheerful_3_mean[ind]  <- 1.86
+dat_sum3$depressed_cheerful_3_sd[ind]    <- 0.75
+   
+dat_sum3$angry_gentle_3_mean[ind] <- 2.00
+dat_sum3$angry_gentle_3_sd[ind]   <- 0.79
+
+  
+ind <- nrow(dat_sum3) - 3
+dat_sum3$short_name[ind] <- "Human"
+dat_sum3$type[ind]       <- "LossFailure"
+dat_sum3$outcome[ind]    <- "positive"
+
+dat_sum3$valence_3_mean[ind] <- 1.08
+dat_sum3$valence_3_sd[ind]   <- 0.64
+
+dat_sum3$nervous_calm_3_mean[ind] <- 3.78
+dat_sum3$nervous_calm_3_sd[ind]   <- 0.61
+
+dat_sum3$depressed_cheerful_3_mean[ind]  <- 3.54
+dat_sum3$depressed_cheerful_3_sd[ind]    <- 0.68
+   
+dat_sum3$angry_gentle_3_mean[ind] <- 3.65
+dat_sum3$angry_gentle_3_sd[ind]   <- 0.67
+  
+hypo_questions3 <- c("valence","nervous_calm","depressed_cheerful","angry_gentle")
+
+for(q in hypo_questions2){
+  human_id <- dat_sum3$short_name=="Human"
+  dat_sum3[[paste0(q,"_3_se")]][human_id] <- dat_sum3[[paste0(q,"_3_sd")]][human_id]/sqrt(perrez_n)
+  dat_sum3[[paste0(q,"_3_se")]][human_id] <- dat_sum3[[paste0(q,"_3_sd")]][human_id]/sqrt(perrez_n)
+}
+
+```
+
+
+```{r echo=FALSE}
+## Helper functions
+getModelSetup <- function(model_name){
+  if(model_name=="Human"){
+    return(c("Human","batch","Num","T","T"))
+  }
+  
+  ## Rule -> separate by comma
+  temp <- strsplit(model_name,"_")[[1]]
+  model <- ifelse(temp[1]=="d003","D003", 
+                  ifelse(temp[1]=="chat","Chat","GPT4"))
+  batch <- temp[2]
+  instruction <- instruction_names[as.numeric(substr(temp[3],2,2))+1]
+  instruction_bef <- ifelse(substr(temp[4],3,3)=="T","Before","After")
+  history <- ifelse(substr(temp[5],2,2)=="T","True","False")
+  return(c(model, batch,instruction,instruction_bef,history))
+}
+
+## Helper functions
+gen_dat_to_plot <- function(dat, q, t, models, ignore_t = FALSE, phase_3 = FALSE){
+  mean <- c()
+  se   <- c()
+  sd   <- c()
+  for(m in models){
+    for(i in c(1:t)){
+      q_temp <- if(ignore_t) q else paste0(q,"_",i)
+      mean <- c(mean, dat[[paste0(q_temp,"_mean")]][dat$short_name==m] )
+      se   <- c(se, dat[[paste0(q_temp,"_se")]][dat$short_name==m])
+      sd   <- c(sd, dat[[paste0(q_temp,"_se")]][dat$short_name==m])
+    }
+  }
+  each_n <- 2
+  outcome <- c("Ongoing")
+  type <- c("Aversive","LossFailure")
+  if(phase_3){
+    each_n <- 4
+    outcome <- c("positive","negative")
+    type <- rep(type,each = 2)
+  }
+  
+  model_setups <- sapply(model_to_plot, getModelSetup)
+  dat_temp <- data.frame(
+    mean = mean,
+    sd   = sd,
+    se   = se,
+    type = rep(type, length(mean)/2),
+    time = rep(rep(c(1:t), each=each_n), length(models)),
+    outcome = rep(outcome, length(mean)/2),
+    model = rep(models, each = t*each_n),
+    short_name = rep(model_setups[1,], each=t*each_n),
+    batch = rep(model_setups[2,], each = t*each_n),
+    instruction = rep(model_setups[3,], each=t*each_n),
+    instruct_bef = rep(model_setups[4,], each=t*each_n),
+    history = rep(model_setups[5,], each=t*each_n)
+  )
+  dat_temp$time  <- factor(dat_temp$time)
+  dat_temp$short_name <- factor(dat_temp$short_name, levels=model_short_names, ordered=TRUE)
+  return(dat_temp)
+}
+
+```
+
+
+## Hypothesis Testing 
+
+- Comparing the results with hypothesis and human 
+- Here is the list of questions: 
+
+### H1: 
+1) Effects of situation and process characteristics on subjective appraisals and on emotional reactions of a stressful episode: 
+    - 1.1) According to the objectives of the construction, subjects should perceive higher controllability and changeability in the aversive episdoes than in the loss or failure episodes 
+    - 1.2) In both types of stressful situations controllability and changeability should be perceived as lower over the course of the episodes, from phase 1 to phase 2, due to the stressor remaining unchanged over time.
+    - 1.3) Negative valence should be similarly perceived in the two subtests (aver vs loss), but should be in the course of the (unchanged) stressful episdoes. There should be a strong difference between positive and negative outcome as described in the hypothetical end of the episode (phase 3)
+    - 1.4) Concerning the theme or content of the two classes of stressful episdoes, it is to be supposed that aversive stimuluation by social agents (as presented in some episodes) produces more aggresive and less depressed emotions** than the looming loss or failure events
+
+```{r echo=FALSE, fig.width=10, fig.height=4}
+plot_list3 <- list()
+model_to_plot <- c("Human","d003_indiv_i0_ibT_hF", "chat_indiv_i0_ibT_hF", "gpt4_indiv_i0_ibT_hF")
+
+questions_to_plot <- c("changeability","controlability")
+ylim_list <- c(5.2, 5.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot) 
+  
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=2.5) + facet_wrap(~ short_name, nrow=1) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + theme(legend.position = "bottom")
+  legend <- get_legend(g)
+  print(g)
+  
+}
+
+```
+
+
+```{r echo=FALSE, fig.width=10, fig.height=4}
+## Third phase
+questions_to_plot <- c("nervous_calm","depressed_cheerful","angry_gentle","valence")
+ylim_list <- c(5.2, 5.2, 5.2, 5.2)
+
+## Combing 1-2 & 3 
+gen_dat_to_plot123 <- function(q, models){
+  dat_out <- data.frame()
+  for(m in models){
+    dat_temp <- data.frame(
+      mean = c(dat_sum[[paste0(q,"_1_mean")]][dat_sum$short_name == m],
+               dat_sum[[paste0(q,"_2_mean")]][dat_sum$short_name==m], 
+               dat_sum3[[paste0(q,"_3_mean")]][dat_sum3$short_name==m]),
+      se   = c(dat_sum[[paste0(q,"_1_se")]][dat_sum$short_name==m],
+               dat_sum[[paste0(q,"_2_se")]][dat_sum$short_name==m], 
+             dat_sum3[[paste0(q,"_3_se")]][dat_sum3$short_name==m]),
+      outcome   = c("1","1","2","2","3-Pos","3-Neg","3-Pos","3-Neg"),
+      type      = c(rep(c("Aversive","LossFailure"),2), rep(c("Aversive","LossFailure"), each = 2)),
+      time      = c("1","1","2","2","3","3","3","3")
+    )
+    dat_temp$outcome <- factor(dat_temp$outcome, levels = c("1","2","3-Neg","3-Pos"), ordered=TRUE)
+    dat_temp$model <- m
+    model_setups <- getModelSetup(m)
+    dat_temp$short_name <- model_setups[1]
+    dat_temp$batch  <- model_setups[2]
+    dat_temp$instruction <- model_setups[3]
+    dat_temp$instruct_bef <- model_setups[4]
+    dat_temp$history <- model_setups[5]
+    dat_out <- if(dim(dat_out)[1]==0) dat_temp else rbind(dat_out,dat_temp)
+  }
+  dat_out$short_name <- factor(dat_out$short_name, levels = model_short_names, ordered = TRUE)
+  return(dat_out)
+}
+
+for(q in questions_to_plot){
+  dat_temp <- gen_dat_to_plot123(q,model_to_plot)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color = outcome, group = interaction(outcome,type), shape=type )) + 
+  geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=2.5) + ylab("Likert") +   xlab("Phase") + 
+    scale_color_brewer(palette="Spectral") + ggtitle(q) + facet_wrap(~ short_name, nrow=1) + theme(legend.position = "bottom")
+  print(g) 
+  legend3 <- get_legend(g)
+  g <- g + theme(legend.position = "none")
+  plot_list3[[length(plot_list3)+1]] <- g
+}
+
+
+```
+
+
+### H2:
+2) Effects of situation and process on situation-directed behaviors:
+    - 2.1) The less controllable the situations (gross and net control), the less active influence on the stressor will be exerted by the subject and,
+    - 2.2) the more passivity (hesitation and resignation) will occur.
+
+```{r echo = FALSE, fig.width=10, fig.height=4}
+questions_to_plot <- c("allo_problem", "emotion_focused_ef","self_esteem_ef",
+                       "env_passive", "env_active")
+ylim_list <- c(3.4, 3.4, 3.4, 4.3, 4.3)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot) 
+  
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=2.5) + facet_wrap(~ short_name, nrow=1) + theme(legend.position = "bottom") + 
+    ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase")
+  print(g)
+  g <- g + theme(legend.position = "none")
+}
+
+```
+
+### H3:
+3) Effects on representation-directed coping efforts: The lower the ambiguity of the stressful situation then
+    - 3.1) the more limited the serach for information, and
+    - 3.2) the more the subject will surppress information about the stressor. 
+
+```{r echo = FALSE, fig.width=10, fig.height=4}
+questions_to_plot <- c("act_search_info", "act_suppressed_info")
+ylim_list <- c(4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot) 
+  
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=2.5) + facet_wrap(~ short_name, nrow=1) + theme(legend.position = "bottom") + 
+    ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase")
+  print(g)
+  g <- g + theme(legend.position = "none")
+}
+
+
+```
+
+### H4:
+4) Evaluation-directed coping efforts: The less controllable the situation, 
+    - 4.1) The more the instrumental goals (of influence, substituation) are changed from more alloplastic to more autoplastic adaptation, especially when stressful effects are long-lasting; because social aversive stressors as convceived in the SCPQ episodes probably represent a stronger attack on the self-esteem of the subject, his or her coping intentions should focus more on the goal of (re)equilibration of self-esteem;
+    - 4.2) the more re-evaluation is increased to change the relavance or valence of the actual situation. 
+
+```{r echo = FALSE, fig.width=10, fig.height=4}
+questions_to_plot <- c("act_reevaluation","act_palliation", "act_blame_other", "act_blame_self")
+ylim_list <- c(4.2, 4.2, 4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot) 
+  
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=2.5) + facet_wrap(~ short_name, nrow=1) + theme(legend.position = "bottom")+ 
+    ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase")
+  print(g)
+  g <- g + theme(legend.position = "none")
+}
+```
+
+#### Results appearing on the main text
+- Combine all results into one image
+
+```{r echo = FALSE, fig.width=12, fig.height=14}
+plot_list <- list()
+model_to_plot <- c("Human","d003_indiv_i0_ibT_hF", "chat_indiv_i0_ibT_hF", "gpt4_indiv_i0_ibT_hF")
+
+questions_to_plot <- c("depressed_cheerful","valence")
+titles <- c("Depressed-Cheerful","Negative Valence")
+ylabs <- c("Depressed - Cheerful","Likert: Small - Large")
+ylim_list <- c(5.5, 5.5)
+## Phase 3
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot123(q, model_to_plot)
+  dat_temp <- subset(dat_temp, time == "3")
+  pd <- position_dodge(0.7)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color=type, group = type, shape=type)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(titles[i]) + 
+    ylab(ylabs[i]) + xlab("Outcome") + facet_grid( ~ short_name) + 
+    theme(legend.position="bottom")
+  g <- g + theme(legend.position = "none")
+  plot_list[[length(plot_list)+1]] <- g
+}
+
+questions_to_plot <- c("changeability","controlability", 
+                       "allo_problem", "emotion_focused_ef",
+                       "env_passive", "env_active",
+                       "act_blame_other", "act_blame_self")
+titles <- c("Changeability","Controllability",
+            "Problem-focused","Emotion-focused",
+            "Passivity","Active Influence",
+            "Blame Others","Blame Self")
+x_labs <- c(
+            "Phase","Phase","Phase","Phase","Phase","Phase")
+y_labs <- c("Likert: Small - Large",
+            "Likert: Small - Large","Likert: Important","Likert: Important",
+            "Likert: Probability","Likert: Probability","Likert: Probability","Likert: Probability")
+ylim_list <- c(5.2, 5.2, 3.2, 3.2, 
+               4.2, 4.2, 4.2, 4.2)
+
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot) 
+  
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=2.5) + facet_wrap(~ short_name, nrow=1) + ylim(-0.2, ylim_list[i])  + ggtitle(titles[i]) + 
+    ylab(y_labs[i]) + xlab("Phase") + theme(legend.position = "bottom") 
+  legend <- get_legend(g)
+  g <- g + theme(legend.position = "none")
+  plot_list[[length(plot_list)+1]] <- g
+  
+}
+
+plot_grid(plot_grid(plotlist = plot_list, ncol=2, labels="AUTO"), legend, ncol=1, rel_heights = c(1, 0.05))
+
+```
+
+
+## Act as a person with depression
+
+### Both types 
+```{r echo=FALSE, fig.width=8, fig.height=6}
+model_to_plot <- c("d003_indiv_i0_ibT_hF", "d003_indiv_i2_ibT_hF", 
+                   "chat_indiv_i0_ibT_hF", "chat_indiv_i2_ibT_hF",
+                   "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i2_ibT_hF")
+ylim_list <- c(5.2, 5.2, 5.3, 
+               5.2, 5.2, 5.2, 
+               3.2, 3.2, 3.2, 
+               4.3, 4.3, 4.3, 4.3, 4.3, 4.3, 
+               4.2, 4.2, 4.2)
+questions_to_plot <- hypo_questions2
+
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  dat_temp$instruction <- factor(dat_temp$instruction, levels = c("Normal","Depression"), ordered=TRUE)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd)  + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(short_name ~ instruction) + theme(legend.position = "bottom")
+  print(g)
+}
+
+
+```
+
+```{r echo=FALSE}
+## Third phase
+questions_to_plot <- c("nervous_calm_3","depressed_cheerful_3","angry_gentle_3","valence_3")
+ylim_list <- c(5.5, 5.5, 5.5, 5.5)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum3, q, 1, model_to_plot, TRUE,TRUE)
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  dat_temp$instruction <- factor(dat_temp$instruction, levels = c("Normal","Depression"), ordered=TRUE)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color =type, group = interaction(type,outcome), shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Outcome") + facet_grid(short_name ~ instruction) + theme(legend.position = "bottom")
+  print(g) 
+}
+
+```
+
+
+### Aversive stories only
+```{r echo=FALSE}
+
+model_to_plot <- c("d003_indiv_i0_ibT_hF", "d003_indiv_i2_ibT_hF", 
+                   "chat_indiv_i0_ibT_hF", "chat_indiv_i2_ibT_hF",
+                   "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i2_ibT_hF")
+ylim_list <- c(5.2, 5.2, 5.3, 
+               5.2, 5.2, 5.2, 
+               3.2, 3.2, 3.2, 
+               4.3, 4.3, 4.3, 4.3, 4.3, 4.3, 
+               4.2, 4.2, 4.2)
+questions_to_plot <- hypo_questions2
+
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  dat_temp <- subset(dat_temp, type=="Aversive")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_wrap(~short_name) + theme(legend.position = "bottom")
+  print(g)
+}
+
+```
+
+```{r echo=FALSE}
+questions_to_plot <- c("nervous_calm_3","depressed_cheerful_3","angry_gentle_3","valence_3")
+ylim_list <- c(5.5, 5.5, 5.5, 5.5)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum3, q, 1, model_to_plot, TRUE,TRUE)
+  dat_temp <- subset(dat_temp, type=="Aversive")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Outcome") + facet_wrap(~short_name) + theme(legend.position = "bottom")
+  print(g) 
+}
+
+```
+
+### Loss&Failure stories only
+```{r echo=FALSE}
+
+model_to_plot <- c("d003_indiv_i0_ibT_hF", "d003_indiv_i2_ibT_hF", 
+                   "chat_indiv_i0_ibT_hF", "chat_indiv_i2_ibT_hF",
+                   "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i2_ibT_hF")
+ylim_list <- c(5.2, 5.2, 5.3, 
+               5.2, 5.2, 5.2, 
+               3.2, 3.2, 3.2, 
+               4.3, 4.3, 4.3, 4.3, 4.3, 4.3, 
+               4.2, 4.2, 4.2)
+questions_to_plot <- hypo_questions2
+
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  dat_temp <- subset(dat_temp, type=="LossFailure")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_wrap(~short_name) + theme(legend.position = "bottom")
+  print(g)
+}
+
+```
+
+```{r echo=FALSE}
+questions_to_plot <- c("nervous_calm_3","depressed_cheerful_3","angry_gentle_3","valence_3")
+ylim_list <- c(5.5, 5.5, 5.5, 5.5)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum3, q, 1, model_to_plot, TRUE,TRUE)
+  dat_temp <- subset(dat_temp, type=="LossFailure")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Outcome") + facet_wrap(~short_name) + theme(legend.position = "bottom")
+  print(g) 
+}
+
+```
+
+
+#### Results appearing in the main text (Only Aversive)
+```{r echo=FALSE, fig.width=10, fig.height=5}
+
+model_to_plot <- c("d003_indiv_i0_ibT_hF", "d003_indiv_i2_ibT_hF", 
+                   "chat_indiv_i0_ibT_hF", "chat_indiv_i2_ibT_hF",
+                   "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i2_ibT_hF")
+ylim_list <- c(5.2, 5.2, 3.2, 3.2, 4.2)
+questions_to_plot <- c("controlability","changeability","allo_problem","act_palliation","act_blame_self")
+ylabs <- c("Likert: Small/Large","Likert: Small/Large","Likert: Importance","Likert: Important","Likert: Probability")
+titles <- c("Changeability","Controllability",
+            "Problem-focused","Palliation","Blame Self")
+plot_list <- list()
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  dat_temp <- subset(dat_temp, type=="Aversive")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(titles[i]) + 
+    ylab("Likert") + xlab("Phase") + facet_wrap(~short_name) + theme(legend.position = "none")
+  plot_list[[i]] <- g
+}
+
+
+q <- "valence_3"
+  dat_temp <- gen_dat_to_plot(dat_sum3, q, 1, model_to_plot, TRUE,TRUE)
+  dat_temp <- subset(dat_temp, type=="Aversive")
+  dat_temp$instruction <- ifelse(dat_temp$instruction=="Choice","Normal","Depression") 
+  dat_temp$outcome <- ifelse(dat_temp$outcome=="positive","pos","neg")
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color =instruction, group = instruction)) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, 5.5) + ggtitle(q) + 
+    ylab("Likert: Small/Large") + xlab("Outcome") + facet_wrap(~short_name)  + theme(legend.position = "bottom")
+legend <- get_legend(g + guides(color=guide_legend(title="Instruction")))
+g <- g  + theme(legend.position = "none")
+plot_list[[6]] = g
+
+plot_grid(plot_grid(plotlist = plot_list, labels = "AUTO"), legend, ncol=1, rel_heights = c(1,0.1))
+
+```
+
+## Within Models Across Setups
+
+- Setup: Individual/Batch (2) x Before/After (2) x Choice/Num (2) = 8
+- Two views: between setups (testing hypo) and within setup (comparing similarity)
+
+### Within Setup
+
+```{r echo=FALSE, fig.width=8, fig.height=6}
+model_to_plot <- c("d003_batch_i0_ibF_hF", "d003_batch_i0_ibT_hF", "d003_batch_i1_ibF_hF", "d003_batch_i1_ibT_hF",
+                   "d003_indiv_i0_ibF_hF", "d003_indiv_i0_ibT_hF", "d003_indiv_i1_ibF_hF", "d003_indiv_i1_ibT_hF",
+                   
+                   "chat_batch_i0_ibF_hF", "chat_batch_i0_ibT_hF", "chat_batch_i1_ibF_hF", "chat_batch_i1_ibT_hF",
+                   "chat_indiv_i0_ibF_hF", "chat_indiv_i0_ibT_hF", "chat_indiv_i1_ibF_hF", "chat_indiv_i1_ibT_hF",
+                   
+                  "gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+                  "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF")
+ylim_list <- c(5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2,
+               3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2)
+
+for(i in c(1:length(hypo_questions2))){
+  q <- hypo_questions2[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  pd <- position_dodge(0.7)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color=instruction, group = model, shape=batch, linetype =instruct_bef )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(type ~ short_name) + labs(color="Instruction")  + 
+    theme(legend.position="bottom")
+  print(g)
+}
+
+## Phase 3
+for(i in c(1:length(hypo_questions3))){
+  q <- hypo_questions3[i]
+  dat_temp <- gen_dat_to_plot123(q, model_to_plot)
+  dat_temp <- subset(dat_temp, time == "3")
+  pd <- position_dodge(0.7)
+  g <- ggplot(dat_temp, aes(x = outcome, y=mean, color=instruction, group = model, shape=batch, linetype =instruct_bef )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(type ~ short_name) + labs(color="Instruction")  + 
+    theme(legend.position="bottom")
+  print(g)
+}
+
+```
+
+
+#### Results appearing in the main text
+```{r echo=FALSE, fig.width=8, fig.height=6}
+
+q <- "controlability"
+dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+pd <- position_dodge(0.7)
+g <- ggplot(dat_temp, aes(x = time, y=mean, color=instruction, group = model, shape=batch, linetype =instruct_bef )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, 5.2) + ggtitle("Controllability") + 
+    ylab("Likert: Small - Large") + xlab("Phase") + facet_grid(type ~ short_name) + labs(color="Instruction")  + 
+    theme(legend.position="bottom") + labs(shape="Questions") + labs(linetype="Place")
+print(g)
+
+q <- "valence"
+dat_temp <- gen_dat_to_plot123(q, model_to_plot)
+dat_temp <- subset(dat_temp, time == "3")
+pd <- position_dodge(0.7)
+g <- ggplot(dat_temp, aes(x = outcome, y=mean, color=instruction, group = model, shape=batch, linetype =instruct_bef )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, 5.2) + ggtitle("Negative Valence") + 
+    ylab("Likert") + xlab("Phase") + facet_grid(type ~ short_name) + labs(color="Instruction")  + 
+    theme(legend.position="bottom") + labs(shape="Questions") + labs(linetype="Place")
+print(g)
+```
+
+
+### Between setups
+
+#### Results in the main text 
+
+```{r echo=FALSE, fig.width=6,fig.height=8}
+model_to_plot <- c("gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+                   "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF")
+q <- "changeability"
+dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+g1 <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, 4) + ggtitle("Changeability") + 
+    ylab("Likert: Small - Large") + xlab("Phase") + facet_grid(batch ~ instruction + instruct_bef) + 
+    theme(legend.position="none")
+
+q <- "controlability"
+dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+g2 <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, 5) + ggtitle("Controllability") + 
+    ylab("Likert: Small - Large") + xlab("Phase") + facet_grid(batch ~ instruction + instruct_bef) + 
+    theme(legend.position="bottom")
+legend <- get_legend(g2)
+g2 <- g2 + theme(legend.position = "none")
+
+plot_grid(plot_grid(g1,g2, labels="AUTO", ncol=1), legend, ncol=1, rel_heights = c(1,0.1))
+
+
+```
+
+
+#### Model#1: Text-Davinci-003
+
+
+```{r echo = FALSE, fig.width=8, fig.height=4}
+
+model_to_plot <- c("d003_batch_i0_ibF_hF", "d003_batch_i0_ibT_hF", "d003_batch_i1_ibF_hF", "d003_batch_i1_ibT_hF",
+                   "d003_indiv_i0_ibF_hF", "d003_indiv_i0_ibT_hF", "d003_indiv_i1_ibF_hF", "d003_indiv_i1_ibT_hF")
+questions_to_plot <- c("nervous_calm","depressed_cheerful","angry_gentle",
+                       "changeability","controlability","valence", 
+                       "allo_problem","auto_problem", "emotion_focused_ef","self_esteem_ef",
+                       "act_suppressed_info", "act_search_info", "act_reevaluation","act_palliation",
+                       "act_blame_other", "act_blame_self","env_passive", "env_evasive", "env_active")
+ylim_list <- c(5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2,
+               3.2, 3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(batch ~ instruction + instruct_bef) + 
+    theme(legend.position="bottom")
+  print(g)
+}
+
+
+
+```
+
+#### Model#2: Chat
+
+```{r echo=FALSE, fig.width=8, fig.height=4}
+
+model_to_plot <- c("chat_batch_i0_ibF_hF", "chat_batch_i0_ibT_hF", "chat_batch_i1_ibF_hF", "chat_batch_i1_ibT_hF",
+                   "chat_indiv_i0_ibF_hF", "chat_indiv_i0_ibT_hF", "chat_indiv_i1_ibF_hF", "chat_indiv_i1_ibT_hF")
+questions_to_plot <- c("nervous_calm","depressed_cheerful","angry_gentle",
+                       "changeability","controlability","valence", 
+                       "allo_problem","auto_problem", "emotion_focused_ef","self_esteem_ef",
+                       "act_suppressed_info", "act_search_info", "act_reevaluation","act_palliation",
+                       "act_blame_other", "act_blame_self","env_passive", "env_evasive", "env_active")
+ylim_list <- c(5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2,
+               3.2, 3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(batch ~ instruction + instruct_bef) + 
+    theme(legend.position="bottom")
+  print(g)
+}
+
+```
+
+#### Model#3: GPT4
+
+```{r echo = FALSE, fig.width=8, fig.height=4}
+
+model_to_plot <- c("gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+                   "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF")
+questions_to_plot <- c("nervous_calm","depressed_cheerful","angry_gentle",
+                       "changeability","controlability","valence", 
+                       "allo_problem","auto_problem", "emotion_focused_ef","self_esteem_ef",
+                       "act_suppressed_info", "act_search_info", "act_reevaluation","act_palliation",
+                       "act_blame_other", "act_blame_self","env_passive", "env_evasive", "env_active")
+ylim_list <- c(5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2,
+               3.2, 3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 2, model_to_plot)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = time, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + geom_line(position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.2, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("Phase") + facet_grid(batch ~ instruction + instruct_bef) + 
+    theme(legend.position="bottom")
+  print(g)
+}
+
+```
+
+
+
+## Conditioned on previous appraisal answers  
+- Reported this in the main paper but didn't show any figure.
+
+```{r echo=FALSE, WARNING=FALSE, fig.width=8, fig.height=3}
+model_to_plot <- c("d003_indiv_i0_ibT_hF", "d003_indiv_i0_ibT_hT", 
+                   "chat_indiv_i0_ibT_hF", "chat_indiv_i0_ibT_hT",
+                   "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i0_ibT_hT")
+questions_to_plot <- names(dat)[2:40]
+ylim_list <- c(5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2, 5.2,
+               3.2, 3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2, 
+               ## Phase 2
+               5.2, 5.2, 5.2, 
+               5.2, 5.2, 5.2, 
+               3.2, 3.2, 3.2, 3.2,
+               4.2, 4.2, 4.2, 4.2, 4.2, 4.2, 
+               4.2, 4.2, 4.2)
+
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum, q, 1, model_to_plot, TRUE)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = history, y=mean, color =type, group = type, shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("History") + facet_grid(~short_name) + theme(legend.position="bottom")
+  print(g)
+}
+
+
+```
+
+
+```{r echo=FALSE, fig.width=8, fig.height=3}
+
+questions_to_plot <- names(dat)[41:51]
+ylim_list <- c(## phase 3
+               5.3, 5.3, 5.3, 
+               5.3, 
+               4.3, 4.3, 4.3, 
+               4.3, 4.3, 4.3, 4.3)
+for(i in c(1:length(questions_to_plot))){
+  q <- questions_to_plot[i]
+  dat_temp <- gen_dat_to_plot(dat_sum3, q, 1, model_to_plot, TRUE,TRUE)
+  pd <- position_dodge(0.5)
+  g <- ggplot(dat_temp, aes(x = history, y=mean, color =outcome, group = interaction(type,outcome), shape=type )) +
+    geom_errorbar(aes(ymin=mean-1.96*se, ymax=mean+1.96*se), width=.3, position=pd) + 
+    geom_point(position=pd, size=3) + ylim(-0.25, ylim_list[i]) + ggtitle(q) + 
+    ylab("Likert") + xlab("History") + facet_grid(~short_name) + theme(legend.position = "bottom")
+  print(g)
+}
+
+
+```
+
+
+
+
+## Hypotheses Testing Results
+- A Heatmap/table shows the number of setups for a given model align with hypotheses for different theshold values
+- Regression is fitted in a similar as the Perrez work, specifically fitting the interaction effect between type and time.
+- We decide to not report these in the main text because of the following reasons:
+- First, if we were to report any results based on any cutoff threshold, this wouldn't be fair to the model due ot the fact that they only have 9 data point per condition. In addition, one could argue that with temperature = 0, you are always going to get the same results. Therefore, you can collect 100 more data and the mean would be the same but SE would limit to 0. 
+- Second, hence, one may argue that then looking at the sign/direction would be enough. However, we feel that this would also going to bias the view since presenting with only sign results ignore magnitude which clearly differs from human. 
+- Therefore, we decide to not inlcude the following results in the main paper. 
+- To address this problem, the future work will look at temperature !=0 and repeat multiple times (require time and money) 
+- Another way to address this problem is to get new human data so we can compare magtinude of human and models.
+
+```{r echo =FALSE, eval=FALSE}
+##hypo_question2 
+hypo_questions2 <- c("controlability","changeability","valence","nervous_calm","depressed_cheerful","angry_gentle","allo_problem","emotion_focused_ef","self_esteem_ef","env_active","env_passive","act_search_info","act_suppressed_info","act_reevaluation","act_palliation","act_blame_self", "act_blame_other")
+## m <- brm(emotion_focused_ef ~ type*time, data=dat_to_fit)
+hypo_oppo_direction <- c("act_suppressed_info","env_passive","act_reevaluation","act_palliation","emotion_focused_ef","self_esteem_ef")
+
+gen_results_hypo <- function(q, m, dat_to_fit){
+  file_name <- paste0("models/",q,"_",m)
+  #print(file_name)
+  f_temp <- as.formula(paste0(q,"~ type*time"))
+  m_temp <- brm(f_temp, data =dat_to_fit, file = file_name) 
+            ##control=list(adapt_delta=0.90, max_treedepth=12)
+
+  ## If typeLossFailure > 0, aversive is less than lossfailure.
+  h_type <- if(q %in% hypo_oppo_direction) hypothesis(m_temp, "typeLossFailure > 0") else  hypothesis(m_temp, "typeLossFailure < 0")
+  h_time <- if(q == "act_blame_other") hypothesis(m_temp, "time2 > 0") else hypothesis(m_temp, "time2 < 0")
+  
+  dat_out <- data.frame(
+    type95   = h_type$hypothesis$Post.Prob > 0.95,
+    type90   = h_type$hypothesis$Post.Prob > 0.90,
+    type80   = h_type$hypothesis$Post.Prob > 0.80,
+    typeSign = h_type$hypothesis$Post.Prob > 0.50,
+    time95   = h_time$hypothesis$Post.Prob > 0.95,
+    time90   = h_time$hypothesis$Post.Prob > 0.90,
+    time80   = h_time$hypothesis$Post.Prob > 0.80,
+    timeSign = h_time$hypothesis$Post.Prob > 0.50,
+    question = q, 
+    model    = m
+  )
+  
+  return(dat_out)
+}
+
+##Stack  each question together along time and type
+gen_dat_to_fit <- function(dat){
+  dat_to_fit <- data.frame(
+      nervous_calm   = c(dat$nervous_calm_1, dat$nervous_calm_2),
+      depressed_cheerful = c(dat$depressed_cheerful_1, dat$depressed_cheerful_2),
+      angry_gentle   =  c(dat$angry_gentle_1, dat$angry_gentle_2),
+      changeability  = c(dat$changeability_1, dat$changeability_2),  
+      controlability = c(dat$controlability_1, dat$controlability_2),
+      valence        = c(dat$valence_1, dat$valence_2),
+      allo_problem   = c(dat$allo_problem_1, dat$allo_problem_2),
+      emotion_focused_ef = c(dat$emotion_focused_ef_1, dat$emotion_focused_ef_2),
+      self_esteem_ef = c(dat$self_esteem_ef_1,dat$self_esteem_ef_2),
+      env_active     = c(dat$env_active_1, dat$env_active_2),
+      env_passive    = c(dat$env_passive_1, dat$env_passive_2),
+      act_search_info = c(dat$act_search_info_1, dat$act_search_info_2),
+      act_suppressed_info = c(dat$act_suppressed_info_1, dat$act_suppressed_info_2),
+      act_reevaluation = c(dat$act_reevaluation_1, dat$act_reevaluation_2),
+      act_palliation = c(dat$act_palliation_1, dat$act_palliation_2),
+      act_blame_self = c(dat$act_blame_self_1, dat$act_blame_self_2),
+      act_blame_other = c(dat$act_blame_other_1, dat$act_blame_other_2),
+      type           = rep(dat$type,2),
+      time           = rep(c("1","2"), each=18)
+  )
+  return(dat_to_fit)
+}
+
+## chat_batch_i1_ibT_hF
+dat_fit_results <- data.frame()
+for(m in short_name){
+  #print(m)
+  dat_to_fit  <- gen_dat_to_fit(dat[dat$short_name==m,])
+  for(q in hypo_questions2){
+    results <- gen_results_hypo(q, m,dat_to_fit)
+    dat_fit_results <- if(dim(dat_fit_results)[1]==0) results else rbind(dat_fit_results, results)
+  }
+}
+save(dat_fit_results, file="fitting_results")
+```
+
+```{r echo=FALSE}
+load(file="fitting_results")
+model_to_check <-  c("d003_batch_i0_ibF_hF", "d003_batch_i0_ibT_hF", "d003_batch_i1_ibF_hF", "d003_batch_i1_ibT_hF",
+             "d003_indiv_i0_ibF_hF", "d003_indiv_i0_ibT_hF", "d003_indiv_i1_ibF_hF", "d003_indiv_i1_ibT_hF",
+             #"d003_indiv_i2_ibT_hF", "d003_indiv_i0_ibT_hT",
+             "chat_batch_i0_ibF_hF", "chat_batch_i0_ibT_hF", "chat_batch_i1_ibF_hF", "chat_batch_i1_ibT_hF",
+             "chat_indiv_i0_ibF_hF", "chat_indiv_i0_ibT_hF", "chat_indiv_i1_ibF_hF", "chat_indiv_i1_ibT_hF",
+             #"chat_indiv_i0_ibT_hT", "chat_indiv_i2_ibT_hF",
+             "gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+             "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF"
+             #,"gpt4_indiv_i0_ibT_hT", "gpt4_indiv_i2_ibT_hF"
+             )
+dat_fit_results <- subset(dat_fit_results, model %in% model_to_check)
+dat_fit_results$short_name <- sapply(dat_fit_results$model, getModelSetup)[1,]
+hypo_focused2 <- c("controlability","changeability","allo_problem","emotion_focused_ef","self_esteem_ef","env_active","env_passive","act_search_info","act_suppressed_info","act_reevaluation","act_palliation","act_blame_self", "act_blame_other") 
+
+dat_fit_sum_95 <- data.frame(
+  D003Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type95[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  D003Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time95[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  ChatType = sapply(hypo_focused2, function(q) sum(dat_fit_results$type95[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  ChatTime = sapply(hypo_focused2, function(q) sum(dat_fit_results$time95[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  GPT4Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type95[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q])),
+  GPT4Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time95[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q]))
+)
+
+dat_fit_sum_90 <- data.frame(
+  D003Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type90[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  D003Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time90[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  ChatType = sapply(hypo_focused2, function(q) sum(dat_fit_results$type90[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  ChatTime = sapply(hypo_focused2, function(q) sum(dat_fit_results$time90[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  GPT4Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type90[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q])),
+  GPT4Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time90[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q]))
+)
+
+dat_fit_sum_80 <- data.frame(
+  D003Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type80[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  D003Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time80[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  ChatType = sapply(hypo_focused2, function(q) sum(dat_fit_results$type80[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  ChatTime = sapply(hypo_focused2, function(q) sum(dat_fit_results$time80[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  GPT4Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$type80[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q])),
+  GPT4Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$time80[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q]))
+)
+
+dat_fit_sum_sign <- data.frame(
+  D003Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$typeSign[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  D003Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$timeSign[dat_fit_results$short_name=="D003" & dat_fit_results$question==q])),
+  ChatType = sapply(hypo_focused2, function(q) sum(dat_fit_results$typeSign[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  ChatTime = sapply(hypo_focused2, function(q) sum(dat_fit_results$timeSign[dat_fit_results$short_name=="Chat" & dat_fit_results$question==q])),
+  GPT4Type = sapply(hypo_focused2, function(q) sum(dat_fit_results$typeSign[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q])),
+  GPT4Time = sapply(hypo_focused2, function(q) sum(dat_fit_results$timeSign[dat_fit_results$short_name=="GPT4" & dat_fit_results$question==q]))
+)
+
+```
+
+
+```{r echo=FALSE, eval=FALSE}
+hypo_questions3 <- c("valence","nervous_calm","depressed_cheerful","angry_gentle")
+
+gen_results_hypo3 <- function(q, m, dat_to_fit){
+  file_name <- paste0("models/",q,"3_",m)
+  #print(file_name)
+  f_temp <- as.formula(paste0(q,"~ type*outcome"))
+  m_temp <- brm(f_temp, data =dat_to_fit, file = file_name) 
+            ##control=list(adapt_delta=0.90, max_treedepth=12)
+  
+  h_time <- if(q == "valence") hypothesis(m_temp, "outcomePositive < 0") else hypothesis(m_temp, "outcomePositive > 0")
+  h_type <- hypothesis(m_temp, "typeLossFailure < 0")
+  
+  dat_out <- data.frame(
+    type95   = h_type$hypothesis$Post.Prob > 0.95,
+    type90   = h_type$hypothesis$Post.Prob > 0.90,
+    type80   = h_type$hypothesis$Post.Prob > 0.80,
+    typeSign = h_type$hypothesis$Post.Prob > 0.50,
+    
+    time95   = h_time$hypothesis$Post.Prob > 0.95,
+    time90   = h_time$hypothesis$Post.Prob > 0.90,
+    time80   = h_time$hypothesis$Post.Prob > 0.80,
+    timeSign = h_time$hypothesis$Post.Prob > 0.05,
+    question = q, 
+    model    = m
+  )
+  
+  return(dat_out)
+}
+
+gen_dat_to_fit3 <- function(dat){
+  dat_to_fit <- data.frame(
+      valence        = c(dat$valence_3[pos_outcome], dat$valence_3[neg_outcome]),
+      nervous_calm   = c(dat$nervous_calm_3[pos_outcome], dat$nervous_calm_3[neg_outcome]),
+      depressed_cheerful  = c(dat$depressed_cheerful_3[pos_outcome], dat$depressed_cheerful_3[neg_outcome]),
+      angry_gentle   = c(dat$angry_gentle_3[pos_outcome], dat$angry_gentle_3[neg_outcome]),
+      type           = c(dat$type[pos_outcome], dat$type[neg_outcome]),
+      outcome        = rep(c("Positive","Negative"), each=9)
+  )
+  return(dat_to_fit)
+}
+
+dat_fit_results3 <- data.frame()
+for(m in short_name){
+  #print(m)
+  dat_to_fit  <- gen_dat_to_fit3(dat[dat$short_name==m,])
+  for(q in hypo_questions3){
+    results <- gen_results_hypo3(q, m, dat_to_fit)
+    dat_fit_results3 <- if(dim(dat_fit_results3)[1]==0) results else rbind(dat_fit_results3, results)
+  }
+}
+
+save(dat_fit_results3, file="fitting_results3")
+
+```
+
+```{r echo=FALSE}
+load(file="fitting_results3")
+
+model_to_check <-  c("d003_batch_i0_ibF_hF", "d003_batch_i0_ibT_hF", "d003_batch_i1_ibF_hF", "d003_batch_i1_ibT_hF",
+             "d003_indiv_i0_ibF_hF", "d003_indiv_i0_ibT_hF", "d003_indiv_i1_ibF_hF", "d003_indiv_i1_ibT_hF",
+             #"d003_indiv_i2_ibT_hF", "d003_indiv_i0_ibT_hT",
+             "chat_batch_i0_ibF_hF", "chat_batch_i0_ibT_hF", "chat_batch_i1_ibF_hF", "chat_batch_i1_ibT_hF",
+             "chat_indiv_i0_ibF_hF", "chat_indiv_i0_ibT_hF", "chat_indiv_i1_ibF_hF", "chat_indiv_i1_ibT_hF",
+             #"chat_indiv_i0_ibT_hT", "chat_indiv_i2_ibT_hF",
+             "gpt4_batch_i0_ibF_hF", "gpt4_batch_i0_ibT_hF", "gpt4_batch_i1_ibF_hF", "gpt4_batch_i1_ibT_hF",
+             "gpt4_indiv_i0_ibF_hF", "gpt4_indiv_i0_ibT_hF", "gpt4_indiv_i1_ibF_hF", "gpt4_indiv_i1_ibT_hF"
+             #,"gpt4_indiv_i0_ibT_hT", "gpt4_indiv_i2_ibT_hF"
+             )
+dat_fit_results3 <- subset(dat_fit_results3, model %in% model_to_check)
+dat_fit_results3$short_name <- sapply(dat_fit_results3$model, getModelSetup)[1,]
+
+dat_fit_sum3_95 <- data.frame(
+  D003Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type95[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  D003Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time95[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  ChatType = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type95[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  ChatTime = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time95[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  GPT4Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type95[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q])),
+  GPT4Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time95[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q]))
+)
+
+dat_fit_sum3_90 <- data.frame(
+  D003Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type90[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  D003Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time90[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  ChatType = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type90[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  ChatTime = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time90[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  GPT4Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type90[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q])),
+  GPT4Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time90[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q]))
+)
+
+dat_fit_sum3_80 <- data.frame(
+  D003Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type80[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  D003Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time80[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  ChatType = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type80[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  ChatTime = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time80[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  GPT4Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$type80[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q])),
+  GPT4Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$time80[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q]))
+)
+
+dat_fit_sum3_sign <- data.frame(
+  D003Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$typeSign[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  D003Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$timeSign[dat_fit_results3$short_name=="D003" & dat_fit_results3$question==q])),
+  ChatType = sapply(hypo_questions3, function(q) sum(dat_fit_results3$typeSign[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  ChatTime = sapply(hypo_questions3, function(q) sum(dat_fit_results3$timeSign[dat_fit_results3$short_name=="Chat" & dat_fit_results3$question==q])),
+  GPT4Type = sapply(hypo_questions3, function(q) sum(dat_fit_results3$typeSign[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q])),
+  GPT4Time = sapply(hypo_questions3, function(q) sum(dat_fit_results3$timeSign[dat_fit_results3$short_name=="GPT4" & dat_fit_results3$question==q]))
+)
+
+```
+
+```{r echo = FALSE, fig.width=6, fig.height=10}
+### Combine and Plot
+
+dat_fit_sum_95 <- rbind(dat_fit_sum_95, dat_fit_sum3_95)
+dat_fit_sum_90 <- rbind(dat_fit_sum_90, dat_fit_sum3_90)
+dat_fit_sum_80 <- rbind(dat_fit_sum_80, dat_fit_sum3_80)
+dat_fit_sum_sign <- rbind(dat_fit_sum_sign, dat_fit_sum3_sign)
+
+questions_lists <- c("Controllability", "Changeability", "Problem-focused", "Emotion-focused",
+                     "Self Esteem Coping", "Active Influence", "Passivity", "Search Information",
+                     "Suppressed Information", "Re-evaluation", "Palliation",
+                     "Blame Self", "Blame Others", "Negative Valence","Nervous-Calm",
+                     "Depressed-Cheerful", "Angry-Gentle")
+
+dat_fit_sum_95$question <- rownames(dat_fit_sum_95)
+dat_fit_sum_90$question <- rownames(dat_fit_sum_90)
+dat_fit_sum_80$question <- rownames(dat_fit_sum_80)
+dat_fit_sum_sign$question <- rownames(dat_fit_sum_sign)
+
+questions_to_plot <- c("controlability","changeability","allo_problem",
+                       "emotion_focused_ef", "env_active", "env_passive", "act_blame_self",
+                       "act_blame_other","valence","nervous_calm","depressed_cheerful","angry_gentle" )
+dat_fit_sum_95 <- subset(dat_fit_sum_95, dat_fit_sum_95$question %in% questions_to_plot)
+dat_fit_sum_90 <- subset(dat_fit_sum_90, dat_fit_sum_90$question %in% questions_to_plot)
+dat_fit_sum_80 <- subset(dat_fit_sum_80, dat_fit_sum_80$question %in% questions_to_plot)
+dat_fit_sum_sign <- subset(dat_fit_sum_sign, dat_fit_sum_sign$question %in% questions_to_plot)
+
+dat_temp <- melt(dat_fit_sum_95)
+dat_temp$question <- factor(dat_temp$question, levels = rownames(dat_fit_sum_95), ordered=TRUE)
+g <- ggplot(data = dat_temp, aes(x = variable, y=question, fill = value)) + geom_tile(color="black",linewidth=0.5) + theme(legend.position="bottom")  + ggtitle("p < .05") + scale_fill_continuous(low = "white", high = "darkblue", limits=c(0, 8),  breaks=seq(0,8,by=1)) 
+print(g)
+
+dat_temp <- melt(dat_fit_sum_90)
+dat_temp$question <- factor(dat_temp$question, levels = rownames(dat_fit_sum_90), ordered=TRUE)
+g <- ggplot(data = dat_temp, aes(x = variable, y=question, fill = value)) + geom_tile(color="black",linewidth=0.5) + theme(legend.position="bottom") + ggtitle("p < .1") + scale_fill_continuous(low = "white", high = "darkblue", limits=c(0, 8),  breaks=seq(0,8,by=1)) 
+print(g)
+
+dat_temp <- melt(dat_fit_sum_80)
+dat_temp$question <- factor(dat_temp$question, levels = rownames(dat_fit_sum_90), ordered=TRUE)
+g <- ggplot(data = dat_temp, aes(x = variable, y=question, fill = value)) + geom_tile(color="black",linewidth=0.5) + theme(legend.position="bottom") + ggtitle("P > 0.8 of being in the predicted direction") + scale_fill_continuous(low = "white", high = "darkblue", limits=c(0, 8),  breaks=seq(0,8,by=1)) 
+print(g)
+
+
+dat_temp <- melt(dat_fit_sum_sign)
+dat_temp$question <- factor(dat_temp$question, levels = rownames(dat_fit_sum_sign), ordered=TRUE)
+g <- ggplot(data = dat_temp, aes(x = variable, y=question, fill = value)) + geom_tile(color="black",linewidth=0.5) + theme(legend.position="bottom") + ggtitle("Correct Sign") + scale_fill_continuous(low = "white", high = "darkblue", limits=c(0, 8),  breaks=seq(0,8,by=1))
+print(g)
+
+```
+
